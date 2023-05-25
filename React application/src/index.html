@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>KNN OCR</title>
+
+    <style>
+      label {
+        font-weight: bold;
+        text-align: right;
+        padding: 20px;
+      }
+      #root {
+        max-width: 400px;
+        padding: 20px;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>CS 444/544: Project 4 - KNN OCR</h1>
+
+    <!-- form for entering backend web services URL -->
+    <form id="url-form">
+      <label for="ws=url">KNN Web Services URL</label>
+      <input
+        id="ws-url"
+        name="ws-url"
+        size="40"
+        value="https://zdu.binghamton.edu:2345"
+      />
+    </form>
+
+    <!-- custom HTML component -->
+    <div id="root">
+      <digit-image-recognizer
+        id="recognizer"
+        ws-url="https://zdu.binghamton.edu:2345"
+      >
+        <span slot="recognize">Classify</span>
+      </digit-image-recognizer>
+    </div>
+
+    <!-- HTML template for above custom component -->
+    <template id="recognizer-template">
+      <style>
+        #errors {
+          color: red;
+        }
+        canvas {
+  border: 1px solid black;
+  width: 560px;
+  height: 360px;
+}
+      </style>
+      <div align="center">
+        <canvas id="img-canvas" style="border: 2px solid black">
+          Sorry, your browser does not support the <code>canvas</code>
+          element, which is necessary for this application.
+        </canvas>
+        <br /><br />
+        <button id="clear"><slot name="clear">Clear Area</slot></button>
+        <button id="recognize"><slot name="recognize">Recognize</slot></button>
+        Pen width :
+        <select id="pen-width">
+          <option value="1" selected="selected">1</option>
+          <option value="2">2</option>
+        </select>
+        <p><strong>Label</strong>: <span id="knn-label"></span></p>
+        <ul id="errors"></ul>
+      </div>
+    </template>
+
+    <!-- hook into dynamic code -->
+    <script type="module" src="index.mjs"></script>
+  </body>
+</html>
