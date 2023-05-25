@@ -1,0 +1,16 @@
+{
+  "name": "mnist-test-data",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cs544-js-utils": "file:../../../../lib/cs544-js-utils-1.0.0.tgz",
+    "prj1-sol": "file:../../../../lib/prj1-sol-1.0.0.tgz"
+  }
+}

@@ -1,0 +1,152 @@
+# goto project dir
+$ cd ~/i?44/submit/prj3-sol/
+
+# create dir for holding base-64 MNIST test data along with labels
+$ mkdir -p ~/tmp/mnist-test-data
+
+# define a sh-var for convenience
+$ EXTRAS=$HOME/cs544/projects/prj3/extras
+
+# show usage
+$ $EXTRAS/mnist-test-data/index.mjs
+usage: index.mjs MNIST_DATA_DIR OUT_DIR
+
+# run program to put MNIST test data into base-64 files with
+# separate label files
+$ $EXTRAS/mnist-test-data/index.mjs ~/i?44/data ~/tmp/mnist-test-data
+
+# sanity check: each test has separate .b64 + .label files;
+# 10000 tests results in 20000 files.
+$ ls ~/tmp/mnist-test-data | wc -l
+20000
+
+# directory listing for first 10 files
+$ ls -l ~/tmp/mnist-test-data | head
+total 80000
+-rw-rw-r-- 1 umrigar umrigar 1051 Jul  8 15:17 000000.b64
+-rw-rw-r-- 1 umrigar umrigar    2 Jul  8 15:17 000000.label
+-rw-rw-r-- 1 umrigar umrigar 1051 Jul  8 15:17 000001.b64
+-rw-rw-r-- 1 umrigar umrigar    2 Jul  8 15:17 000001.label
+-rw-rw-r-- 1 umrigar umrigar 1051 Jul  8 15:17 000002.b64
+-rw-rw-r-- 1 umrigar umrigar    2 Jul  8 15:17 000002.label
+-rw-rw-r-- 1 umrigar umrigar 1051 Jul  8 15:17 000003.b64
+-rw-rw-r-- 1 umrigar umrigar    2 Jul  8 15:17 000003.label
+-rw-rw-r-- 1 umrigar umrigar 1051 Jul  8 15:17 000004.b64
+
+# show usage for server
+$ ./index.mjs
+usage: index.mjs CONFIG_PATH [MNIST_DATA_DIR]
+
+# run server in background.
+# server is not ready until listen message appears
+# for faster startup, omit last argument if training data already in DB
+$ ./index.mjs config.mjs ~/i?44/data &
+[1] 2594474
+$ listening on port 2345
+
+# convenience sh-var
+$ SERVER=https://localhost:2345
+
+# POST test image 000000.b64; returns ID
+#   -s: makes curl silent (non-chatty)
+#   -k: accept self-signed certificates
+#   -D: output headers (/dev/stderr sends to stderr)
+#   -H: set request header
+#   -d: sets request body to $(cat...): base64 image file
+#   -X: set request method to POST
+# json_pp pretty-prints stdout as JSON
+# Extra Continue status caused by curl;
+# see <https://gms.tf/when-curl-sends-100-continue.html>
+$ curl -s -k -D /dev/stderr \
+       -H 'content-type: application/json' \
+       -d $(cat ~/tmp/mnist-test-data/000000.b64) -X POST \
+       $SERVER/knn/images | json_pp
+HTTP/1.1 100 Continue
+
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: Location
+Content-Type: application/json; charset=utf-8
+Content-Length: 43
+ETag: W/"2b-gDs9G9jwbp/t6rTf24g3MO7x7qA"
+Date: Fri, 08 Jul 2022 19:28:37 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{
+   "id" : "b-3a01a83228f024b528f8bba084e4a2e8"
+}
+
+# turn off curl's EXPECT header.
+# note that the same ID is generated as before, since my i
+# mplementation treats labeled-features as value objects
+# and generates ID's based on their contents,
+$ curl -s -k -D /dev/stderr \
+       -H 'content-type: application/json' -H 'expect:' \
+       -d $(cat ~/tmp/mnist-test-data/000000.b64) -X POST \
+       $SERVER/knn/images | json_pp
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: Location
+Content-Type: application/json; charset=utf-8
+Content-Length: 43
+ETag: W/"2b-gDs9G9jwbp/t6rTf24g3MO7x7qA"
+Date: Fri, 08 Jul 2022 19:37:34 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{
+   "id" : "b-3a01a83228f024b528f8bba084e4a2e8"
+}
+
+# retrieve image just added
+$ curl -s -k -D /dev/stderr \
+    $SERVER/knn/images/b-3a01a83228f024b528f8bba084e4a2e8 | json_pp
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: Location
+Content-Type: application/json; charset=utf-8
+Content-Length: 1076
+ETag: W/"434-v5BbsCn/7HEo3Wb40oOvYJpXRBw"
+Date: Fri, 08 Jul 2022 19:45:10 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{
+   "features" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFS5n5c8JAAAAAAAAAAAAAAAAAAAAAAAAAAAAADe/v7+/vHGxsbGxsbGxqo0AAAAAAAAAAAAAAAAQ3JIcqPj/uH+/v765f7+jAAAAAAAAAAAAAAAAAAAAAAAEUIOQ0NDOxXs/moAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT/dESAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAW6f9TAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgf7uLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO/n+PgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIX+uwUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnN+DoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+/rYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABL+/A5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT3f6mAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADy/7bIwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJv7+TQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH+D+cwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIX+/jQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD3y/v40AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB5/v7bKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAef7PEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+   "label" : null
+}
+
+# use jq to extract features field; see <https://stedolan.github.io/jq/>
+$ curl -s -k  $SERVER/knn/images/b-3a01a83228f024b528f8bba084e4a2e8 \
+    | jq .features
+"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFS5n5c8JAAAAAAAAAAAAAAAAAAAAAAAAAAAAADe/v7+/vHGxsbGxsbGxqo0AAAAAAAAAAAAAAAAQ3JIcqPj/uH+/v765f7+jAAAAAAAAAAAAAAAAAAAAAAAEUIOQ0NDOxXs/moAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT/dESAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAW6f9TAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgf7uLAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAO/n+PgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIX+uwUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAnN+DoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB+/rYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABL+/A5AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAT3f6mAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADy/7bIwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJv7+TQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH+D+cwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIX+/jQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD3y/v40AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB5/v7bKAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAef7PEgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="
+
+# redirect retrieved b64 image into a file
+$ curl -s -k  $SERVER/knn/images/b-3a01a83228f024b528f8bba084e4a2e8 \
+    | jq .features > ~/tmp/t
+
+# compare with originally POSTed file; silent output means comparison ok
+$ cmp ~/tmp/mnist-test-data/000000.b64 ~/tmp/t
+
+# use KNN algorithm to classify previously POSTed test image
+$ curl -s -k  $SERVER/knn/labels/b-3a01a83228f024b528f8bba084e4a2e8 \
+    | json_pp
+{
+   "id" : "a-90787e52aec8888e5a816052107223dd",
+   "label" : "7"
+}
+
+# print label associated with test image; they match!!
+$ cat ~/tmp/mnist-test-data/000000.label 
+7
+
+# retrieve training image closest to test image; note that the labels match
+$ curl -s -k  $SERVER/knn/images/a-90787e52aec8888e5a816052107223dd | json_pp
+{
+   "features" : "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC2/eXl5eXl5enl5eVkAAAAAAAAAAAAAAAAAAAA37f39/f39/f/9/f36vgAAAAAAAAAAAAAAAAAAAIefs72p/cugn/T9/fh5AAAAAAAAAAAAAAAAAAAAAAkNBScTAAAkJ9H9qgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADJ/VAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAS1NUVAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPs/3HAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXv39cwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAF79zxwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACk/TUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr/tgcAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA09v11AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAqv2pBAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcv79dgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABKX+qAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACr9/i8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWk/asEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAb/f2GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAG/39OQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABv9tgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+   "label" : "7"
+}
